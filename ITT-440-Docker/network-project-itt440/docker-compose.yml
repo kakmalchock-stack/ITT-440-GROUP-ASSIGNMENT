@@ -1,0 +1,203 @@
+version: '3.8'
+
+services:
+  # Type 1: Database
+  database:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root@12345
+      MYSQL_DATABASE: project_db
+      TZ: Asia/Kuala_Lumpur
+    command: --default-time-zone='+08:00'
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql # Init script
+      - db_data:/var/lib/mysql # Persistent storage for data
+    healthcheck:
+      # Ensures the server won't start until the DB is truly ready for connections
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      start_period: 30s
+
+########
+#AZMEER#
+########
+
+  # Type 1: C Socket Server
+  c-server-azmeer:
+    build: ./c-server-azmeer
+    container_name: c_socket_server-azmeer
+    # Map the internal port (5001) to the host port for external testing
+    ports:
+      - "5001:5001" 
+    depends_on:
+      # CRITICAL: Wait for the DB to be healthy, not just started
+      database:
+        condition: service_healthy
+    environment:
+      # Pass config to your application code
+      DB_HOST: database
+      SERVER_PORT: 5001
+  
+  # Type 2: C Socket Client
+  c-client-azmeer:
+    build: ./c-client-azmeer
+    container_name: c_socket_client-azmeer
+    command: ./client
+    # The client doesn't need to publish ports
+    depends_on:
+      # Wait for the server to start
+      c-server-azmeer:
+        condition: service_started
+    environment:
+      TARGET_HOST: c-server-azmeer # Connect to the C server's service name
+      TARGET_PORT: 5001
+
+  # Type 3: Python Socket Server
+  python-server-azmeer:
+    build: ./python-server-azmeer
+    container_name: python_socket_server-azmeer
+    ports:
+      - "5002:5002" 
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DB_HOST: database
+      SERVER_PORT: 5002
+
+  # Type 4: Python Socket Client
+  python-client-azmeer:
+    build: ./python-client-azmeer
+    container_name: python_socket_client-azmeer
+    command: python client.py
+    depends_on:
+      python-server-azmeer:
+        condition: service_started
+    environment:
+      TARGET_HOST: python-server-azmeer # Connect to the Python server's service name
+      TARGET_PORT: 5002
+
+########
+#HASIF#
+########
+
+  # Type 1: C Socket Server
+  c-server-hasif:
+    build: ./c-server-hasif
+    container_name: c_socket_server-hasif
+    # Map the internal port (5001) to the host port for external testing
+    ports:
+      - "5003:5003" 
+    depends_on:
+      # CRITICAL: Wait for the DB to be healthy, not just started
+      database:
+        condition: service_healthy
+    environment:
+      # Pass config to your application code
+      DB_HOST: database
+      SERVER_PORT: 5003
+  
+  # Type 2: C Socket Client
+  c-client-hasif:
+    build: ./c-client-hasif
+    container_name: c_socket_client-hasif
+    command: ./client
+    # The client doesn't need to publish ports
+    depends_on:
+      # Wait for the server to start
+      c-server-hasif:
+        condition: service_started
+    environment:
+      TARGET_HOST: c-server-hasif # Connect to the C server's service name
+      TARGET_PORT: 5003
+
+  # Type 3: Python Socket Server
+  python-server-hasif:
+    build: ./python-server-hasif
+    container_name: python_socket_server-hasif
+    ports:
+      - "5004:5004" 
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DB_HOST: database
+      SERVER_PORT: 5004
+
+  # Type 4: Python Socket Client
+  python-client-hasif:
+    build: ./python-client-hasif
+    container_name: python_socket_client-hasif
+    command: python client.py
+    depends_on:
+      python-server-hasif:
+        condition: service_started
+    environment:
+      TARGET_HOST: python-server-hasif # Connect to the Python server's service name
+      TARGET_PORT: 5004
+      
+########
+#AKMAL#
+########
+
+  # Type 1: C Socket Server
+  c-server-akmal:
+    build: ./c-server-akmal
+    container_name: c_socket_server-akmal
+    # Map the internal port (5001) to the host port for external testing
+    ports:
+      - "5005:5005" 
+    depends_on:
+      # CRITICAL: Wait for the DB to be healthy, not just started
+      database:
+        condition: service_healthy
+    environment:
+      # Pass config to your application code
+      DB_HOST: database
+      SERVER_PORT: 5005
+  
+  # Type 2: C Socket Client
+  c-client-akmal:
+    build: ./c-client-akmal
+    container_name: c_socket_client-akmal
+    command: ./client
+    # The client doesn't need to publish ports
+    depends_on:
+      # Wait for the server to start
+      c-server-akmal:
+        condition: service_started
+    environment:
+      TARGET_HOST: c-server-akmal # Connect to the C server's service name
+      TARGET_PORT: 5005
+
+  # Type 3: Python Socket Server
+  python-server-akmal:
+    build: ./python-server-akmal
+    container_name: python_socket_server-akmal
+    ports:
+      - "5006:5006" 
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      DB_HOST: database
+      SERVER_PORT: 5006
+
+  # Type 4: Python Socket Client
+  python-client-akmal:
+    build: ./python-client-akmal
+    container_name: python_socket_client-akmal
+    command: python client.py
+    depends_on:
+      python-server-akmal:
+        condition: service_started
+    environment:
+      TARGET_HOST: python-server-hasif # Connect to the Python server's service name
+      TARGET_PORT: 5006
+
+# Volume definition for persistent data storage
+volumes:
+  db_data:
